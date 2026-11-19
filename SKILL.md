@@ -1,6 +1,6 @@
 ---
 name: scratch-game-dev
-description: Creare giochi Scratch (.sb3) completi interamente via codice, senza editor. Usa questa skill ogni volta che l'utente vuole creare, generare o modificare un progetto/gioco Scratch, TurboWarp o PenguinMod: "fai un gioco scratch", "crea un .sb3", "platformer in Scratch", "giochi fatti dall'AI con Scratch", oppure quando chiede di convertire sb3 in HTML/EXE giocabile. Copre la generazione di project.json, asset procedurali (SVG/WAV), validazione e packaging TurboWarp.
+description: Creare giochi Scratch (.sb3) completi interamente via codice, senza editor. Usa questa skill ogni volta che l'utente vuole creare, generare o modificare un progetto/gioco Scratch, TurboWarp o PenguinMod: "fai un gioco scratch", "crea un .sb3", "platformer in Scratch", "giochi fatti dall'AI con Scratch", oppure quando chiede di convertire sb3 in HTML/EXE giocabile. Copre la generazione di project.json, asset procedurali (SVG/WAV), validazione e packaging TurboWarp. Copre anche il REVERSE ENGINEERING di .sb3 esistenti ("analizza questo sb3", "copia/impara da questo gioco", "come funziona questo progetto Scratch", "modifica questo .sb3") con sb3_inspect.py, SENZA mai leggere project.json.
 ---
 
 # Scratch Game Dev — giochi Scratch interamente generati dall'AI
@@ -161,9 +161,51 @@ punti/vite, suoni, GameOver/Win) generato e verificato end-to-end nel runtime.
 Leggi `examples/coin_dash/build_game.py` come riferimento di stile prima di
 scrivere il tuo primo gioco: dimostra TUTTE le API del builder.
 
+## Reverse engineering di .sb3 esistenti (copiare / imparare / modificare)
+
+Quando l'utente fornisce un `.sb3` da capire, copiare o modificare, **NON leggere mai
+`project.json`** (né con `cat`, né con `view`, né aprendo lo zip a mano): pesa
+decine/centinaia di KB e brucia token. Usa `scripts/sb3_inspect.py`, che lo legge
+al posto tuo e restituisce viste compatte (solo stdlib Python):
+
+```bash
+S=~/.agents/skills/scratch-game-dev/scripts
+python3 $S/sb3_inspect.py info game.sb3            # panoramica: target, variabili, messaggi, estensioni, stima token, HINT sul genere/meccaniche
+python3 $S/sb3_inspect.py tree game.sb3            # script numerati: "#2 when I receive [hurt v] — 5 blocchi [scrive inv]"
+python3 $S/sb3_inspect.py flow game.sb3            # chi invia/riceve ogni broadcast, chi scrive/legge ogni variabile, cloni, custom block
+python3 $S/sb3_inspect.py show game.sb3 Player -s 1   # pseudo-codice (scratchblocks) dello script #1 di Player
+python3 $S/sb3_inspect.py find game.sb3 "score"    # dove compare un opcode / testo / variabile / messaggio
+python3 $S/sb3_inspect.py assets game.sb3 -o assets/   # elenca ed estrae costumi e suoni
+python3 $S/sb3_inspect.py to-python game.sb3 -o rebuild.py --build   # rigenera il gioco come script sb3_builder
+python3 $S/sb3_inspect.py diff original.sb3 modified.sb3 [--scripts]  # confronto (+ pseudo-codice)
+python3 $S/sb3_inspect.py import game.sb3 Enemy -o enemy.py --extract-assets  # copia uno sprite
+python3 $S/sb3_inspect.py explain game.sb3         # riassunto euristico scene/score/win
+```
+
+**Ordine consigliato** (dal più economico al più costoso): `info` → `tree` → `flow` →
+`show <sprite> -s N` solo sugli script che servono → `find` per cercare un dettaglio.
+`show` senza `-s` stampa tutti gli script di quel target (limite `--max-lines`, default 200).
+Il pseudo-codice usa la sintassi scratchblocks con l'indentazione al posto di `end`.
+
+**Imparare da un gioco**: `info` + `flow` + `show` sugli script chiave, poi riusa i pattern
+(vedi anche `references/game-recipes.md`). Non copiare a occhio interi sprite: spiega all'utente
+cosa hai capito e riscrivi con `sb3_builder`.
+
+**Copiare / modificare un gioco**: `to-python game.sb3 -o rebuild.py --build` crea
+`rebuild.py` (stesso formato di `examples/coin_dash/build_game.py`) + la cartella
+`rebuild_assets/` con costumi e suoni originali. Con `--build` lo esegue, lo valida
+(`validate_sb3`) e confronta opcode/variabili/asset con l'originale. Poi **modifica
+`rebuild.py`** (cambia un valore, aggiungi uno sprite, riscrivi uno script) e rilancialo:
+non serve mai toccare il JSON. Limiti noti: stack di blocchi senza hat saltati (usa
+`--keep-loose` per includerli), commenti e monitor di liste/variabili locali non
+riprodotti (segnalati nell'output).
+
+Dettagli e sintassi del pseudo-codice: `references/reverse-engineering.md`.
+
 ## References — quando leggerle
 
 - `references/opcode-catalog.md` — firma esatta di OGNI blocco core (+ pen/music). Leggilo prima di scrivere la build se non hai gli input a mente.
 - `references/game-recipes.md` — pattern completi già testati: platformer fisica, spari con cloni, nemici, menu scene, punti/vita, power-up, salvataggio, scrolling. PARTI DA QUI per la logica di gioco.
 - `references/extensions.md` — catalogo estensioni Scratch/TurboWarp/PenguinMod con ID esatti e blocchi utili per i giochi.
 - `references/sb3-format.md` — specifica completa del formato sb3 (serve solo per debugging avanzato o feature del builder non coperte).
+- `references/reverse-engineering.md` — come leggere l'output di `sb3_inspect.py` (sintassi pseudo-codice, flow, limiti di `to-python`). Leggilo quando analizzi un .sb3 esistente.
