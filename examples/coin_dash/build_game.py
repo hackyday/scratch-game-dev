@@ -5,8 +5,9 @@ Menu → Game → GameOver/Win. Player con frecce, monete con cloni, nemici
 che inseguono, invulnerabilità dopo il colpo, score/lives con monitor,
 SFX procedurali, broadcast per le scene.
 """
+import os
 import sys
-sys.path.insert(0, "/home/catto/.agents/skills/scratch-game-dev/scripts")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
 import sb3_builder as S
 import assets as A
 
@@ -56,7 +57,7 @@ player.script(
     S.when_flag(),
     S.blk("looks_show"),
     S.blk("looks_cleargraphiceffects"),
-    S.blk("looks_setsize", SIZE=S.v(100)),
+    S.blk("looks_setsizeto", SIZE=S.v(100)),
     S.blk("motion_gotoxy", X=S.v(0), Y=S.v(0)),
     S.blk("control_forever", SUBSTACK=S.seq(
         S.blk("motion_movesteps", STEPS=S.v(4)),
@@ -130,7 +131,7 @@ enemy.script(S.when_flag(), S.blk("looks_hide"))
 enemy.script(
     S.blk("control_start_as_clone"),
     S.blk("looks_show"),
-    S.blk("looks_setsize", SIZE=S.v(90)),
+    S.blk("looks_setsizeto", SIZE=S.v(90)),
     S.blk("motion_gotoxy", X=S.random(-200, 200), Y=S.v(170)),
     S.blk("control_forever", SUBSTACK=S.seq(
         S.blk("motion_pointtowards", TOWARDS=S.menu("motion_pointtowards_menu",
@@ -157,7 +158,7 @@ button.sound(A.sfx_menu_select(), name="btn")
 button.script(
     S.when_flag(),
     S.blk("looks_show"),
-    S.blk("looks_setsize", SIZE=S.v(300)),
+    S.blk("looks_setsizeto", SIZE=S.v(300)),
     S.blk("motion_gotoxy", X=S.v(0), Y=S.v(-120)),
 )
 
